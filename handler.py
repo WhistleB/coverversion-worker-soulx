@@ -104,7 +104,10 @@ def apply_post_fx(audio_path: str, vocal_volume: float = 1.3, reverb_amount: flo
 
 
 def run_soulx_svc(voice_path: str, song_path: str, output_dir: str,
-                  pitch_shift: int = 0, n_steps: int = 32, cfg: float = 3.0):
+                  pitch_shift: int = 0, n_steps: int = 32, cfg: float = 3.0,
+                  seed: int = 42, prompt_vocal_sep: bool = False,
+                  target_vocal_sep: bool = True, auto_shift: bool = True,
+                  auto_mix_acc: bool = True):
     """
     Run SoulX-Singer SVC via webui_svc.py's pipeline (subprocess).
     Uses the built-in vocal separation and F0 extraction.
@@ -133,7 +136,7 @@ prompt_save.mkdir(parents=True, exist_ok=True)
 pipeline.configure(save_path=prompt_save)
 p_ok, p_msg, prompt_wav, prompt_f0 = pipeline.run(
     audio_path=Path('{voice_path}'),
-    vocal_sep=False,
+    vocal_sep={prompt_vocal_sep},
     language='Mandarin',
 )
 print(f'Prompt preprocess: ok={{p_ok}}, wav={{prompt_wav}}, f0={{prompt_f0}}')
@@ -147,7 +150,7 @@ target_save.mkdir(parents=True, exist_ok=True)
 pipeline.configure(save_path=target_save)
 t_ok, t_msg, target_wav, target_f0 = pipeline.run(
     audio_path=Path('{song_path}'),
-    vocal_sep=True,
+    vocal_sep={target_vocal_sep},
     language='Mandarin',
 )
 print(f'Target preprocess: ok={{t_ok}}, wav={{target_wav}}, f0={{target_f0}}')
@@ -174,13 +177,13 @@ args = argparse.Namespace(
     prompt_f0_path=str(prompt_f0),
     target_f0_path=str(target_f0),
     save_dir='{output_dir}/generated',
-    auto_shift=True,
+    auto_shift={auto_shift},
     pitch_shift={pitch_shift},
     n_steps={n_steps},
     cfg={cfg},
     fp16=True,
-    seed=42,
-    auto_mix_acc=True,
+    seed={seed},
+    auto_mix_acc={auto_mix_acc},
 )
 
 from cli.inference_svc import process as svc_process
@@ -237,14 +240,22 @@ def handler(job):
     task_id = job_input.get("task_id", "unknown")
     song_url = job_input["song_url"]
     voice_url = job_input["voice_url"]
+    # SoulX-Singer 参数
     pitch_shift = int(job_input.get("pitch_shift", 0))
     n_steps = int(job_input.get("n_steps", 32))
     cfg = float(job_input.get("cfg", 3.0))
+    seed = int(job_input.get("seed", 42))
+    prompt_vocal_sep = bool(job_input.get("prompt_vocal_sep", False))
+    target_vocal_sep = bool(job_input.get("target_vocal_sep", True))
+    auto_shift = bool(job_input.get("auto_shift", True))
+    auto_mix_acc = bool(job_input.get("auto_mix_acc", True))
+    # 后处理参数
     vocal_volume = float(job_input.get("vocal_volume", 1.3))
     reverb = float(job_input.get("reverb", 0.25))
 
     print(f"\n{'='*60}")
-    print(f"[Job] task_id={task_id}, pitch={pitch_shift}, steps={n_steps}, cfg={cfg}")
+    print(f"[Job] task_id={task_id}, pitch={pitch_shift}, steps={n_steps}, cfg={cfg}, seed={seed}")
+    print(f"[Job] prompt_sep={prompt_vocal_sep}, target_sep={target_vocal_sep}, auto_shift={auto_shift}, auto_mix={auto_mix_acc}")
     print(f"[Job] vocal_vol={vocal_volume}, reverb={reverb}")
     print(f"{'='*60}")
 
@@ -277,6 +288,9 @@ def handler(job):
             output_path = run_soulx_svc(
                 voice_path, song_path, svc_output_dir,
                 pitch_shift=pitch_shift, n_steps=n_steps, cfg=cfg,
+                seed=seed, prompt_vocal_sep=prompt_vocal_sep,
+                target_vocal_sep=target_vocal_sep, auto_shift=auto_shift,
+                auto_mix_acc=auto_mix_acc,
             )
             svc_time = time.time() - t
             print(f"[Job] SVC: {svc_time:.1f}s")
