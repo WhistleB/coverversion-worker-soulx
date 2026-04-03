@@ -17,12 +17,9 @@ RUN pip install --no-cache-dir \
     requests \
     pedalboard
 
-# Install SoulX-Singer deps WITHOUT overwriting torch
+# Install SoulX-Singer deps WITHOUT overwriting torch (keep base image torch 2.4)
 RUN grep -v -E "^torch==|^torchaudio==" /app/SoulX-Singer/requirements.txt > /tmp/reqs_notorch.txt \
     && pip install --no-cache-dir -r /tmp/reqs_notorch.txt
-
-# Upgrade torch to 2.6 for RTX 5090 support (CUDA 12.4 compatible)
-RUN pip install --no-cache-dir torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 # Download models
 RUN python -c "\
