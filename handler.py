@@ -209,20 +209,57 @@ args = argparse.Namespace(
 from cli.inference_svc import process as svc_process
 svc_process(args, config, model)
 
-# Find generated file
+# Find generated vocal file
 gen_dir = Path('{output_dir}/generated')
-wav_files = list(gen_dir.glob('*.wav'))
-if wav_files:
-    # Prefer mixed version if exists
-    mixed = [f for f in wav_files if 'mixed' in f.name]
-    result = mixed[0] if mixed else wav_files[0]
-    # Copy to known location
-    import shutil
-    shutil.copy(result, '{output_dir}/final_output.wav')
-    print(f'Output: {{result}}')
-else:
-    print('No output generated!', file=sys.stderr)
-    sys.exit(1)
+generated = gen_dir / 'generated.wav'
+if not generated.exists():
+    wav_files = list(gen_dir.glob('*.wav'))
+    if wav_files:
+        generated = wav_files[0]
+    else:
+        print('No output generated!', file=sys.stderr)
+        sys.exit(1)
+
+print(f'Generated vocal: {{generated}}')
+
+# Mix with accompaniment
+if {auto_mix_acc}:
+    acc_path = Path('{output_dir}/preprocess/target/acc.wav')
+    if acc_path.exists():
+        import librosa, soundfile as sf
+        mix_sr = 24000
+        vocal, _ = librosa.load(str(generated), sr=mix_sr, mono=True)
+        acc, _ = librosa.load(str(acc_path), sr=mix_sr, mono=True)
+
+        # Calculate accompaniment pitch shift to match vocal shift
+        vocal_shift = {pitch_shift}
+        if vocal_shift != 0:
+            mul = -1 if vocal_shift < 0 else 1
+            acc_shift = abs(vocal_shift) % 12
+            acc_shift = mul * acc_shift
+            if acc_shift > 6: acc_shift -= 12
+            if acc_shift < -6: acc_shift += 12
+            if acc_shift != 0:
+                acc = librosa.effects.pitch_shift(acc, sr=mix_sr, n_steps=acc_shift)
+                print(f'Applied pitch shift of {{acc_shift}} semitones to accompaniment')
+
+        mix_len = min(len(vocal), len(acc))
+        if mix_len > 0:
+            mixed = vocal[:mix_len] + acc[:mix_len]
+            peak = float(np.max(np.abs(mixed))) if mixed.size > 0 else 1.0
+            if peak > 1.0:
+                mixed = mixed / peak
+            mixed_path = gen_dir / 'generated_mixed.wav'
+            sf.write(str(mixed_path), mixed, mix_sr)
+            generated = mixed_path
+            print(f'Mixed with accompaniment: {{mixed_path}}')
+    else:
+        print(f'No accompaniment found at {{acc_path}}, using vocal only')
+
+# Copy to known location
+import shutil
+shutil.copy(str(generated), '{output_dir}/final_output.wav')
+print(f'Output: {{generated}}')
 """
 
     script_path = os.path.join(output_dir, "run_svc.py")
