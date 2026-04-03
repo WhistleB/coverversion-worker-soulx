@@ -201,7 +201,7 @@ args = argparse.Namespace(
     pitch_shift={pitch_shift},
     n_steps={n_steps},
     cfg={cfg},
-    fp16=True,
+    use_fp16=True,
     seed={seed},
     auto_mix_acc={auto_mix_acc},
 )
