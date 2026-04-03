@@ -140,30 +140,43 @@ pipeline = PreprocessPipeline(
 # Preprocess prompt (voice reference)
 prompt_save = Path('{output_dir}/preprocess/prompt')
 prompt_save.mkdir(parents=True, exist_ok=True)
-pipeline.configure(save_path=prompt_save)
-p_ok, p_msg, prompt_wav, prompt_f0 = pipeline.run(
-    audio_path=Path('{voice_path}'),
+pipeline.save_dir = str(prompt_save)
+pipeline.run(
+    audio_path=str(Path('{voice_path}')),
     vocal_sep={prompt_vocal_sep},
+    max_merge_duration=60000,
     language='Mandarin',
 )
-print(f'Prompt preprocess: ok={{p_ok}}, wav={{prompt_wav}}, f0={{prompt_f0}}')
-if not p_ok:
-    print(f'Prompt failed: {{p_msg}}', file=sys.stderr)
+prompt_wav = prompt_save / 'vocal.wav'
+prompt_f0 = prompt_save / 'vocal_f0.npy'
+if not prompt_wav.exists() or not prompt_f0.exists():
+    print(f'Prompt preprocess failed: missing {{prompt_wav}} or {{prompt_f0}}', file=sys.stderr)
     sys.exit(1)
+print(f'Prompt preprocess: wav={{prompt_wav}}, f0={{prompt_f0}}')
+
+import gc
+gc.collect()
+torch.cuda.empty_cache()
 
 # Preprocess target (song)
 target_save = Path('{output_dir}/preprocess/target')
 target_save.mkdir(parents=True, exist_ok=True)
-pipeline.configure(save_path=target_save)
-t_ok, t_msg, target_wav, target_f0 = pipeline.run(
-    audio_path=Path('{song_path}'),
+pipeline.save_dir = str(target_save)
+pipeline.run(
+    audio_path=str(Path('{song_path}')),
     vocal_sep={target_vocal_sep},
+    max_merge_duration=60000,
     language='Mandarin',
 )
-print(f'Target preprocess: ok={{t_ok}}, wav={{target_wav}}, f0={{target_f0}}')
-if not t_ok:
-    print(f'Target failed: {{t_msg}}', file=sys.stderr)
+target_wav = target_save / 'vocal.wav'
+target_f0 = target_save / 'vocal_f0.npy'
+if not target_wav.exists() or not target_f0.exists():
+    print(f'Target preprocess failed: missing {{target_wav}} or {{target_f0}}', file=sys.stderr)
     sys.exit(1)
+print(f'Target preprocess: wav={{target_wav}}, f0={{target_f0}}')
+
+gc.collect()
+torch.cuda.empty_cache()
 
 # Build model
 model = build_model(
