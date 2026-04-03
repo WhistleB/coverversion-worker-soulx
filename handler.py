@@ -226,7 +226,7 @@ print(f'Generated vocal: {{generated}}')
 if {auto_mix_acc}:
     acc_path = Path('{output_dir}/preprocess/target/acc.wav')
     if acc_path.exists():
-        import librosa, soundfile as sf
+        import numpy as np, librosa, soundfile as sf
         mix_sr = 24000
         vocal, _ = librosa.load(str(generated), sr=mix_sr, mono=True)
         acc, _ = librosa.load(str(acc_path), sr=mix_sr, mono=True)
