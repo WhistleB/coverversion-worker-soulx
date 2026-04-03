@@ -11,12 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Clone SoulX-Singer
 RUN git clone --depth 1 https://github.com/Soul-AILab/SoulX-Singer.git /app/SoulX-Singer
 
-# Install dependencies
+# Install dependencies (skip torch/torchaudio to keep base image's torch 2.4 + CUDA 12.4)
 RUN pip install --no-cache-dir \
     runpod \
     requests \
-    pedalboard \
-    && pip install --no-cache-dir -r /app/SoulX-Singer/requirements.txt
+    pedalboard
+
+# Install SoulX-Singer deps WITHOUT overwriting torch
+RUN grep -v -E "^torch==|^torchaudio==" /app/SoulX-Singer/requirements.txt > /tmp/reqs_notorch.txt \
+    && pip install --no-cache-dir -r /tmp/reqs_notorch.txt
 
 # Download models
 RUN python -c "\
