@@ -120,7 +120,7 @@ sys.path.insert(0, '{SOULX_DIR}')
 os.chdir('{SOULX_DIR}')
 
 from pathlib import Path
-from soulxsinger.preprocess.pipeline import PreprocessPipeline
+from preprocess.pipeline import PreprocessPipeline
 from cli.inference_svc import build_model
 from omegaconf import OmegaConf
 
@@ -128,7 +128,14 @@ from omegaconf import OmegaConf
 config = OmegaConf.load('{SOULX_DIR}/soulxsinger/config/soulxsinger.yaml')
 
 # Init preprocessor
-pipeline = PreprocessPipeline(device='cuda')
+pipeline = PreprocessPipeline(
+    device='cuda',
+    language='Mandarin',
+    save_dir='{output_dir}/preprocess',
+    vocal_sep=True,
+    max_merge_duration=60000,
+    midi_transcribe=False,
+)
 
 # Preprocess prompt (voice reference)
 prompt_save = Path('{output_dir}/preprocess/prompt')
