@@ -15,7 +15,8 @@ RUN git clone --depth 1 https://github.com/Soul-AILab/SoulX-Singer.git /app/Soul
 RUN pip install --no-cache-dir \
     runpod \
     requests \
-    pedalboard
+    pedalboard \
+    demucs
 
 # Install SoulX-Singer deps WITHOUT overwriting torch (keep base image torch 2.4)
 RUN grep -v -E "^torch==|^torchaudio==" /app/SoulX-Singer/requirements.txt > /tmp/reqs_notorch.txt \
@@ -31,6 +32,13 @@ RUN python -c "\
 from huggingface_hub import snapshot_download; \
 snapshot_download('Soul-AILab/SoulX-Singer-Preprocess', local_dir='/app/SoulX-Singer/pretrained_models/SoulX-Singer-Preprocess'); \
 print('Preprocess models downloaded')"
+
+# Pre-download Demucs htdemucs model
+RUN python -c "\
+import torch; \
+from demucs.pretrained import get_model; \
+get_model('htdemucs'); \
+print('htdemucs model downloaded')"
 
 # Copy handler
 COPY handler.py /app/handler.py
